@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/media/ming/DATA/CoMPASSBin2CSV/main.cpp
+iostream
+-
+fstream
+-
+vector
+-
+cstring
+-
+filesystem
+-
+

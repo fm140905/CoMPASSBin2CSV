@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/media/ming/DATA/CoMPASSBin2CSV/build",
+  "command": "/usr/bin/g++-9    -O3 -DNDEBUG -fPIE   -std=gnu++17 -o CMakeFiles/main.dir/main.cpp.o -c /media/ming/DATA/CoMPASSBin2CSV/main.cpp",
+  "file": "/media/ming/DATA/CoMPASSBin2CSV/main.cpp"
+}
+]
