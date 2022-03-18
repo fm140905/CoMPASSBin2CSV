@@ -1,3 +1,0 @@
-/media/ming/DATA/CoMPASSBin2CSV/build/CMakeFiles/rebuild_cache.dir
-/media/ming/DATA/CoMPASSBin2CSV/build/CMakeFiles/edit_cache.dir
-/media/ming/DATA/CoMPASSBin2CSV/build/CMakeFiles/main.dir
