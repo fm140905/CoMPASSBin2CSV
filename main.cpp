@@ -3,7 +3,7 @@
  * @Author: Ming Fang
  * @Date: 2022-03-18 15:52:58
  * @LastEditors: Ming Fang
- * @LastEditTime: 2022-03-18 18:14:34
+ * @LastEditTime: 2022-05-05 17:20:17
  */
 #include <iostream>
 #include <fstream>
@@ -16,7 +16,7 @@ class Event
 private:
     /* data */
 public:
-    Event(const char* buf, const int bufSize);
+    Event(const char* buf, const int bufSize, const int v);
     uint16_t board;
     uint16_t channel;
     uint64_t timetag;
@@ -71,7 +71,7 @@ int getSampleNumber(const std::string path, const int v)
     return sampleNumber;
 }
 
-Event::Event(const char* buf, const int bufSize)
+Event::Event(const char* buf, const int bufSize, const int v)
 {
     std::memcpy(&board, buf, sizeof(decltype(board)));
     std::memcpy(&channel, &buf[2], sizeof(decltype(channel)));
@@ -79,16 +79,22 @@ Event::Event(const char* buf, const int bufSize)
     std::memcpy(&energy, &buf[12], sizeof(decltype(energy)));
     std::memcpy(&energyShort, &buf[14], sizeof(decltype(energyShort)));
     std::memcpy(&flag,  &buf[16], sizeof(decltype(flag)));
-    // skip waveform code, 1 byte
 
     uint32_t nSample(0);
-    std::memcpy(&nSample, &buf[21], sizeof(uint32_t));
-    if (bufSize - 25 != nSample*2)
+    int offset(0);
+    if (v==2)
     {
-        throw std::invalid_argument(std::string("Expected ") + std::to_string(nSample) + " samples, but got" + std::to_string(bufSize - 25));
+        // skip waveform code, 1 byte
+        offset += 1;
+    }
+    
+    std::memcpy(&nSample, &buf[20+offset], sizeof(uint32_t));
+    if (bufSize - 24 -offset != nSample*2)
+    {
+        throw std::invalid_argument(std::string("Expected ") + std::to_string(nSample) + " samples, but got" + std::to_string(bufSize - 24 -offset));
     }
     samples = std::vector<uint16_t>(nSample, 0);
-    std::memcpy(samples.data(), &buf[25], 2*nSample);
+    std::memcpy(samples.data(), &buf[24+offset], 2*nSample);
 }
 
 int main(int argc, char** argv)
@@ -99,6 +105,7 @@ int main(int argc, char** argv)
     // get max num of events from cms
     const uint64_t targetNumEvents(std::stoi(argv[2]));
     // const std::string binFilePath("/media/ming/SeagateDrive/dcr_FJ30035_A3818/DAQ/run_27p5V/RAW/DataR_CH0@DT5730S_2263_run_27p5V.BIN");
+    // const uint64_t targetNumEvents(10000000);
     std::cout << "Binary input file: " << binFilePath << std::endl;
     // replace bin/BIN extension with CSV
     const std::string csvFilePath = binFilePath.substr(0, binFilePath.find_last_of('.')) + ".CSV";
@@ -163,7 +170,7 @@ int main(int argc, char** argv)
         // extract pulses
         while (bufIndex < bufSize && currentNumber < maxNumEvents)
         {
-            Event newPulse(&buffer[bufIndex], eventSize);
+            Event newPulse(&buffer[bufIndex], eventSize, CoMPASSVersion);
             events.push_back(newPulse);
             currentNumber++;
             bufIndex += eventSize;
