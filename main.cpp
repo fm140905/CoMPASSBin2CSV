@@ -3,7 +3,7 @@
  * @Author: Ming Fang
  * @Date: 2022-03-18 15:52:58
  * @LastEditors: Ming Fang
- * @LastEditTime: 2022-05-05 17:20:17
+ * @LastEditTime: 2022-08-22 22:13:01
  */
 #include <iostream>
 #include <fstream>
@@ -99,17 +99,41 @@ Event::Event(const char* buf, const int bufSize, const int v)
 
 int main(int argc, char** argv)
 {
-    const int CoMPASSVersion = 2;
     // get binary file name from cmd
     const std::string binFilePath(argv[1]);
-    // get max num of events from cms
+    // get max num of events from cmd
     const uint64_t targetNumEvents(std::stoi(argv[2]));
+    int CoMPASSVersion(2);
+    if (argc >= 4)
+    {
+        // get CoMPASS version from cmd
+        CoMPASSVersion = std::stoi(argv[3]);
+    }
+    
+    
     // const std::string binFilePath("/media/ming/SeagateDrive/dcr_FJ30035_A3818/DAQ/run_27p5V/RAW/DataR_CH0@DT5730S_2263_run_27p5V.BIN");
     // const uint64_t targetNumEvents(10000000);
     std::cout << "Binary input file: " << binFilePath << std::endl;
     // replace bin/BIN extension with CSV
     const std::string csvFilePath = binFilePath.substr(0, binFilePath.find_last_of('.')) + ".CSV";
     std::cout << "CSV output file: " << csvFilePath << std::endl;
+    // check if csv file already exists
+    if(std::filesystem::exists(csvFilePath))
+    {
+        std::cout << "File " << csvFilePath << " already exists. Overwrite? [Y/N]" << std::endl;
+        std::string overwritePermission;
+        std::cin >> overwritePermission;
+        if (overwritePermission=="Y")
+        {
+            std::cout << "File " << csvFilePath << " will be overwitten." << std::endl;
+        }
+        else
+        {
+            std::cout << "Could not write to file " << csvFilePath << ". Abort." << std::endl;
+            exit(1);
+        }
+    }
+    
     // get bin file size
     std::filesystem::path p{binFilePath};
     uint64_t binFileSize = std::filesystem::file_size(p);

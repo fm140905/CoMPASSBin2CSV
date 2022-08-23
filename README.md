@@ -3,7 +3,7 @@
  * @Author: Ming Fang
  * @Date: 2021-04-06 15:24:22
  * @LastEditors: Ming Fang
- * @LastEditTime: 2022-03-18 18:07:54
+ * @LastEditTime: 2022-08-22 22:01:52
 -->
 ## Compile
 - Install`cmake` and `git`.
@@ -24,10 +24,7 @@
 ## Run
 - Under your working directory, run
     ```bash
-    ./main ${path-to-your-CoMPASS-binary-data} ${max-number-events-to-process}
+    ./main ${path-to-your-CoMPASS-binary-data} ${max-number-events-to-process} ${CoMPASS-version}
     ```
+- If `CoMPASS-vesion` is not provided, it is set to 2 by default.
 - Output file is saved in the same directory where the input file is, and the format is CoMPASS CSV.
-
-## Note
-
-- The script assumes you used CoMPASS version to acquired the binary data. If you used verion 1, change variable `CoMPASSVersion` in `main.cpp` to 1 and recompile.
