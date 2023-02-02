@@ -3,7 +3,7 @@
  * @Author: Ming Fang
  * @Date: 2022-03-18 15:52:58
  * @LastEditors: Ming Fang
- * @LastEditTime: 2022-08-22 22:13:01
+ * @LastEditTime: 2023-02-02 11:58:18
  */
 #include <iostream>
 #include <fstream>
@@ -16,7 +16,7 @@ class Event
 private:
     /* data */
 public:
-    Event(const char* buf, const int bufSize, const int v);
+    Event(const char* buf, const int bufSize, const int v, int sampleNumber);
     uint16_t board;
     uint16_t channel;
     uint64_t timetag;
@@ -36,11 +36,14 @@ std::ostream& operator<<(std::ostream& os, const Event& event)
        << event.energy << ';'
        << event.energyShort << ';'
        << event.flag << ';';
-    for (std::size_t i = 0; i < event.samples.size()-1; i++)
+    if(event.samples.size() > 0)
     {
-        os << event.samples[i] << ';';
+        for (std::size_t i = 0; i < event.samples.size()-1; i++)
+        {
+            os << event.samples[i] << ';';
+        }
+        os << event.samples[event.samples.size()-1];
     }
-    os << event.samples[event.samples.size()-1];
     return os;
 }
 
@@ -57,8 +60,18 @@ int getSampleNumber(const std::string path, const int v)
     int headerSizeBeforeSampleNumber = 20;
     if(v == 2)
     {
-        fileptr.ignore(2); // ignore the first 2 bytes of the file
-        headerSizeBeforeSampleNumber += 1; // one additional byte for waveform code
+        // fileptr.ignore(2); // ignore the first 2 bytes of the file
+        uint32_t Header;
+        fileptr.read((char *)&(Header), 2);
+        if ((Header>>3) & 1)
+        {
+            headerSizeBeforeSampleNumber += 1; // one additional byte for waveform code
+        }
+        else
+        {
+            fileptr.close();
+            return sampleNumber;
+        }
     }
     while (!fileptr.eof())
     {
@@ -71,7 +84,7 @@ int getSampleNumber(const std::string path, const int v)
     return sampleNumber;
 }
 
-Event::Event(const char* buf, const int bufSize, const int v)
+Event::Event(const char* buf, const int bufSize, const int v, const int sampleNumber)
 {
     std::memcpy(&board, buf, sizeof(decltype(board)));
     std::memcpy(&channel, &buf[2], sizeof(decltype(channel)));
@@ -80,21 +93,24 @@ Event::Event(const char* buf, const int bufSize, const int v)
     std::memcpy(&energyShort, &buf[14], sizeof(decltype(energyShort)));
     std::memcpy(&flag,  &buf[16], sizeof(decltype(flag)));
 
-    uint32_t nSample(0);
-    int offset(0);
-    if (v==2)
+    uint32_t nSample(sampleNumber);
+    if (nSample > 0)
     {
-        // skip waveform code, 1 byte
-        offset += 1;
+        int offset(0);
+        if (v==2)
+        {
+            // skip waveform code, 1 byte
+            offset += 1;
+        }
+        
+        std::memcpy(&nSample, &buf[20+offset], sizeof(uint32_t));
+        if (bufSize - 24 -offset != nSample*2)
+        {
+            throw std::invalid_argument(std::string("Expected ") + std::to_string(nSample) + " samples, but got" + std::to_string(bufSize - 24 -offset));
+        }
+        samples = std::vector<uint16_t>(nSample, 0);
+        std::memcpy(samples.data(), &buf[24+offset], 2*nSample);
     }
-    
-    std::memcpy(&nSample, &buf[20+offset], sizeof(uint32_t));
-    if (bufSize - 24 -offset != nSample*2)
-    {
-        throw std::invalid_argument(std::string("Expected ") + std::to_string(nSample) + " samples, but got" + std::to_string(bufSize - 24 -offset));
-    }
-    samples = std::vector<uint16_t>(nSample, 0);
-    std::memcpy(samples.data(), &buf[24+offset], 2*nSample);
 }
 
 int main(int argc, char** argv)
@@ -147,7 +163,14 @@ int main(int argc, char** argv)
     int eventSize = sampleNumber *2;
     if (CoMPASSVersion == 2)
     {
-        headerSize += 1;
+        if (sampleNumber == 0)
+        {
+            headerSize = 20;
+        }
+        else
+        {
+            headerSize += 1;
+        }
     }
     eventSize += headerSize;
     const uint64_t totalNumberEvents = binFileSize / eventSize;
@@ -171,6 +194,16 @@ int main(int argc, char** argv)
         std::cerr << "Cannot open file: " << csvFilePath << std::endl;
         return 1;
     }
+    // write header
+    if (sampleNumber == 0)
+    {
+        csvFile << "Board;Channel;Timestamp(ps);Energy;Energy(short);Flag\n";
+    }
+    else
+    {
+        csvFile << "Board;Channel;Timestamp(ps);Energy;Energy(short);Flag;Waveform\n";
+    }
+    
 
     // read from binary
     // parse
@@ -194,7 +227,7 @@ int main(int argc, char** argv)
         // extract pulses
         while (bufIndex < bufSize && currentNumber < maxNumEvents)
         {
-            Event newPulse(&buffer[bufIndex], eventSize, CoMPASSVersion);
+            Event newPulse(&buffer[bufIndex], eventSize, CoMPASSVersion, sampleNumber);
             events.push_back(newPulse);
             currentNumber++;
             bufIndex += eventSize;
